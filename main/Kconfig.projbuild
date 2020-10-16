@@ -17,4 +17,13 @@ config MQTT_USER
 config MQTT_PASSWORD
     string "MQTT Passowrd"
 
+config TX_GPIO
+    int "TX GPIO number"
+	range 0 34
+	default 4
+config RX_GPIO
+    int "RX GPIO number"
+	range 0 34
+	default 5
+
 endmenu
