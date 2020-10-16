@@ -28,14 +28,26 @@ static esp_mqtt_client_handle_t mqtt_client = NULL;
 const static int MQTT_CONNECTED_BIT = BIT0;
 
 void update_power(struct homie_handle_s *handle, int node, int property);
+void write_power(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len);
 void update_timer(struct homie_handle_s *handle, int node, int property);
+void write_timer(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len);
 void update_heattimer(struct homie_handle_s *handle, int node, int property);
+void write_heattimer(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len);
 void update_target_temp(struct homie_handle_s *handle, int node, int property);
+void write_target_temp(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len);
 void update_timer_value(struct homie_handle_s *handle, int node, int property);
+void write_timer_value(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len);
 void update_heater_temp(struct homie_handle_s *handle, int node, int property);
 void update_bench_temp(struct homie_handle_s *handle, int node, int property);
-void update_heater_timer_value(struct homie_handle_s *handle, int node,
+void update_heattimer_value(struct homie_handle_s *handle, int node,
 		int property);
+void write_heattimer_value(struct homie_handle_s *handle, int node,
+		int property, const char *data, int data_len);
 
 uart_handle_t uart =
 		{ .configRx = { .baud_rate = 57600, .data_bits = UART_DATA_8_BITS,
@@ -62,45 +74,55 @@ homie_handle_t homie = { .deviceid = "sentio-b2-control", .devicename =
 		.num_nodes = 1, .nodes = { { .id = "sentio-b2-control", .name =
 				"Sentio B2 control", .type = "B2", .num_properties = 8,
 				.properties = { { .id = "power", .name = "Power", .settable =
-				HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = " ", .datatype =
-						HOMIE_BOOL, .read_property_cbk = &update_power,
-						.write_property_cbk = NULL, .user_data = NULL, }, {
-						.id = "timer", .name = "Timer", .settable =
-						HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = " ",
-						.datatype = HOMIE_BOOL, .read_property_cbk =
-								&update_timer, .write_property_cbk = NULL,
-						.user_data = NULL, }, { .id = "heattimer", .name =
-						"Heating Timer", .settable =
-				HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = " ", .datatype =
-						HOMIE_BOOL, .read_property_cbk = &update_heattimer,
-						.write_property_cbk = NULL, .user_data = NULL, }, {
-						.id = "target_temp", .name = "Target Temperature",
+				HOMIE_TRUE, .retained =
+				HOMIE_TRUE, .unit = " ", .datatype = HOMIE_BOOL,
+						.read_property_cbk = &update_power,
+						.write_property_cbk = &write_power, .user_data =
+						NULL, }, { .id = "timer", .name = "Timer", .settable =
+				HOMIE_TRUE, .retained =
+				HOMIE_TRUE, .unit = " ", .datatype = HOMIE_BOOL,
+						.read_property_cbk = &update_timer,
+						.write_property_cbk = &write_timer, .user_data =
+						NULL, }, { .id = "heattimer", .name = "Heating Timer",
 						.settable =
-						HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = "°C",
-						.datatype = HOMIE_INTEGER, .read_property_cbk =
-								&update_target_temp, .write_property_cbk = NULL,
-						.user_data = NULL, }, { .id = "timer_value", .name =
-						"Timer Value", .settable =
-				HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = "min", .datatype =
-						HOMIE_INTEGER, .read_property_cbk = &update_timer_value,
-						.write_property_cbk = NULL, .user_data = NULL, }, {
-						.id = "heater_temp", .name = "Heater Temperature",
+						HOMIE_TRUE, .retained =
+						HOMIE_TRUE, .unit = " ", .datatype = HOMIE_BOOL,
+						.read_property_cbk = &update_heattimer,
+						.write_property_cbk = &write_heattimer, .user_data =
+						NULL, }, { .id = "target_temp", .name =
+						"Target Temperature", .settable =
+				HOMIE_TRUE, .retained =
+				HOMIE_TRUE, .unit = "°C", .datatype = HOMIE_INTEGER,
+						.read_property_cbk = &update_target_temp,
+						.write_property_cbk = &write_target_temp, .user_data =
+						NULL, }, { .id = "timer_value", .name = "Timer Value",
 						.settable =
-						HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = "°C",
-						.datatype = HOMIE_INTEGER, .read_property_cbk =
-								&update_heater_temp, .write_property_cbk = NULL,
-						.user_data = NULL, }, { .id = "bench_temp", .name =
+						HOMIE_TRUE, .retained =
+						HOMIE_TRUE, .unit = "min", .datatype = HOMIE_INTEGER,
+						.read_property_cbk = &update_timer_value,
+						.write_property_cbk = &write_timer_value, .user_data =
+						NULL, }, { .id = "heater_temp", .name =
+						"Heater Temperature", .settable =
+				HOMIE_FALSE, .retained =
+				HOMIE_TRUE, .unit = "°C", .datatype = HOMIE_INTEGER,
+						.read_property_cbk = &update_heater_temp,
+						.write_property_cbk =
+						NULL, .user_data =
+						NULL, }, { .id = "bench_temp", .name =
 						"Bench Temperature", .settable =
-				HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = "°C", .datatype =
-						HOMIE_INTEGER, .read_property_cbk = &update_bench_temp,
-						.write_property_cbk = NULL, .user_data = NULL, }, {
-						.id = "heattimer_value", .name = "Heater Timer Value",
-						.settable =
-						HOMIE_FALSE, .retained = HOMIE_TRUE, .unit = "°C",
-						.datatype = HOMIE_INTEGER, .read_property_cbk =
-								&update_heater_timer_value,
-						.write_property_cbk = NULL, .user_data = NULL, }, } } },
-		.uptime = 0, };
+				HOMIE_FALSE, .retained =
+				HOMIE_TRUE, .unit = "°C", .datatype = HOMIE_INTEGER,
+						.read_property_cbk = &update_bench_temp,
+						.write_property_cbk =
+						NULL, .user_data =
+						NULL, }, { .id = "heattimer_value", .name =
+						"Heat Timer Value", .settable =
+				HOMIE_TRUE, .retained =
+				HOMIE_TRUE, .unit = "°C", .datatype = HOMIE_INTEGER,
+						.read_property_cbk = &update_heattimer_value,
+						.write_property_cbk = &write_heattimer_value,
+						.user_data =
+						NULL, }, } } }, .uptime = 0, };
 
 int wifi_retry_count = 0;
 const int WIFI_CONNECTED_BIT = BIT0;
@@ -238,7 +260,7 @@ static void mqtt_app_start(void) {
 	ESP_LOGI(TAG, "Note free memory: %d bytes", esp_get_free_heap_size());
 }
 
-int sentio_get_status(char *command, char value[100]) {
+int sentio_get_status(const char *command, char value[100]) {
 	char cmd[100] = { 0 };
 	snprintf(cmd, 99, "GET %s\r\n", command);
 	uart_write(&uart, cmd, strlen(cmd));
@@ -267,7 +289,37 @@ int sentio_get_status(char *command, char value[100]) {
 	return 0;
 }
 
-int sentio_get_value(char *command, char value[100]) {
+int sentio_set_status(const char *command, const char *value) {
+	char cmd[100] = { 0 };
+	snprintf(cmd, 99, "SET %s %s\r\n", command, value);
+	uart_write(&uart, cmd, strlen(cmd));
+
+	uart_cycle(&uart);
+	char buf_value[100] = { 0 };
+	size_t buf_len = 99;
+	uart_get_buffer(&uart, buf_value, &buf_len);
+
+	ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
+
+	char out_cmd[100] = { 0 };
+	char out_val[100] = { 0 };
+	if (sscanf(buf_value, "%s %s", out_cmd, out_val) == 2) {
+		ESP_LOGI(TAG, "cmd %s value %s", out_cmd, out_val);
+
+		if (strcmp(out_cmd, command) == 0) {
+
+		} else if (strcmp(out_cmd, "UNKNOWN") == 0) {
+			ESP_LOGE(TAG, "unknown command %s", command);
+			return -1;
+		}
+	} else {
+		ESP_LOGE(TAG, "sscanf failed: %s", buf_value);
+		return -1;
+	}
+	return 0;
+}
+
+int sentio_get_value(const char *command, char value[100]) {
 	char cmd[100] = { 0 };
 	snprintf(cmd, 99, "GET %s VAL\r\n", command);
 	uart_write(&uart, cmd, strlen(cmd));
@@ -296,6 +348,38 @@ int sentio_get_value(char *command, char value[100]) {
 	return 0;
 }
 
+int sentio_set_value(const char *command, const char *value, const size_t len) {
+	char cmd[100] = { 0 };
+	snprintf(cmd, 99, "SET %s VAL %.*s\r\n", command, len, value);
+	uart_write(&uart, cmd, strlen(cmd));
+
+	uart_cycle(&uart);
+	char buf_value[100] = { 0 };
+	size_t buf_len = 99;
+	uart_get_buffer(&uart, buf_value, &buf_len);
+
+	ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
+
+	char out_cmd[100] = { 0 };
+	char out_val[100] = { 0 };
+
+	if (sscanf(buf_value, "%s %s", out_cmd, out_val) == 2) {
+		ESP_LOGI(TAG, "cmd %s value %s", out_cmd, out_val);
+
+		if (strcmp(out_cmd, command) == 0) {
+
+		} else if (strcmp(out_cmd, "UNKNOWN") == 0) {
+			ESP_LOGE(TAG, "unknown command %s", command);
+			return -1;
+		}
+	} else {
+		ESP_LOGE(TAG, "sscanf failed: %s", buf_value);
+		return -1;
+	}
+
+	return 0;
+}
+
 void update_power(struct homie_handle_s *handle, int node, int property) {
 	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
 			== pdTRUE) {
@@ -309,6 +393,19 @@ void update_power(struct homie_handle_s *handle, int node, int property) {
 
 				homie_publish_property_value(handle, node, property, value);
 			}
+		}
+		xSemaphoreGive(sentio_state.mutex);
+	}
+}
+
+void write_power(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len) {
+	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
+			== pdTRUE) {
+		if (strncmp(data, "true", data_len) == 0) {
+			sentio_set_status("SAUNA", "ON");
+		} else {
+			sentio_set_status("SAUNA", "OFF");
 		}
 		xSemaphoreGive(sentio_state.mutex);
 	}
@@ -332,6 +429,19 @@ void update_timer(struct homie_handle_s *handle, int node, int property) {
 	}
 }
 
+void write_timer(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len) {
+	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
+			== pdTRUE) {
+		if (strncmp(data, "true", data_len) == 0) {
+			sentio_set_status("TIMER", "ON");
+		} else {
+			sentio_set_status("TIMER", "OFF");
+		}
+		xSemaphoreGive(sentio_state.mutex);
+	}
+}
+
 void update_heattimer(struct homie_handle_s *handle, int node, int property) {
 	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
 			== pdTRUE) {
@@ -345,6 +455,19 @@ void update_heattimer(struct homie_handle_s *handle, int node, int property) {
 
 				homie_publish_property_value(handle, node, property, value);
 			}
+		}
+		xSemaphoreGive(sentio_state.mutex);
+	}
+}
+
+void write_heattimer(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len) {
+	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
+			== pdTRUE) {
+		if (strncmp(data, "true", data_len) == 0) {
+			sentio_set_status("HEATTIMER", "ON");
+		} else {
+			sentio_set_status("HEATTIMER", "OFF");
 		}
 		xSemaphoreGive(sentio_state.mutex);
 	}
@@ -374,6 +497,17 @@ void update_target_temp(struct homie_handle_s *handle, int node, int property) {
 	}
 }
 
+void write_target_temp(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len) {
+	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
+			== pdTRUE) {
+
+		sentio_set_value("SAUNA", data, data_len);
+
+		xSemaphoreGive(sentio_state.mutex);
+	}
+}
+
 void update_timer_value(struct homie_handle_s *handle, int node, int property) {
 	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
 			== pdTRUE) {
@@ -393,6 +527,17 @@ void update_timer_value(struct homie_handle_s *handle, int node, int property) {
 				}
 			}
 		}
+		xSemaphoreGive(sentio_state.mutex);
+	}
+}
+
+void write_timer_value(struct homie_handle_s *handle, int node, int property,
+		const char *data, int data_len) {
+	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
+			== pdTRUE) {
+
+		sentio_set_value("TIMER", data, data_len);
+
 		xSemaphoreGive(sentio_state.mutex);
 	}
 }
@@ -420,6 +565,7 @@ void update_heater_temp(struct homie_handle_s *handle, int node, int property) {
 		xSemaphoreGive(sentio_state.mutex);
 	}
 }
+
 void update_bench_temp(struct homie_handle_s *handle, int node, int property) {
 	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
 			== pdTRUE) {
@@ -444,7 +590,7 @@ void update_bench_temp(struct homie_handle_s *handle, int node, int property) {
 	}
 }
 
-void update_heater_timer_value(struct homie_handle_s *handle, int node,
+void update_heattimer_value(struct homie_handle_s *handle, int node,
 		int property) {
 	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
 			== pdTRUE) {
@@ -464,6 +610,17 @@ void update_heater_timer_value(struct homie_handle_s *handle, int node,
 				}
 			}
 		}
+		xSemaphoreGive(sentio_state.mutex);
+	}
+}
+
+void write_heattimer_value(struct homie_handle_s *handle, int node,
+		int property, const char *data, int data_len) {
+	if (xSemaphoreTake(sentio_state.mutex, (portTickType) portMAX_DELAY)
+			== pdTRUE) {
+
+		sentio_set_value("HEATTIMER", data, data_len);
+
 		xSemaphoreGive(sentio_state.mutex);
 	}
 }
