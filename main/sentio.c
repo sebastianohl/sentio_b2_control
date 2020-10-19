@@ -18,7 +18,6 @@ uart_handle_t uart = {.configRx = {.baud_rate = 57600,
                       .tx_pin = CONFIG_TX_GPIO,
                       .rx_pin = CONFIG_RX_GPIO};
 
-
 int sentio_get_status(const char *command, char value[100])
 {
     char cmd[100] = {0};
