@@ -148,6 +148,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        xEventGroupClearBits(mqtt_event_group, MQTT_CONNECTED_BIT);
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -160,12 +161,12 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
-        // ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        // printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        // printf("DATA='%.*s'\r\n", event->data_len, event->data);
-        // printf("ID=%d, total_len=%d, data_len=%d, current_data_offset=%d\n",
-        //       event->msg_id, event->total_data_len, event->data_len,
-        //       event->current_data_offset);
+        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+        printf("DATA='%.*s'\r\n", event->data_len, event->data);
+        printf("ID=%d, total_len=%d, data_len=%d, current_data_offset=%d\n",
+               event->msg_id, event->total_data_len, event->data_len,
+               event->current_data_offset);
 
         homie_handle_mqtt_incoming_event(&homie, event);
 
@@ -178,6 +179,24 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         break;
     }
     return ESP_OK;
+}
+
+static void mqtt_app_start(void)
+{
+    char uri[256];
+    sprintf(uri, "mqtt://%s:%s@%s:%d", CONFIG_MQTT_USER, CONFIG_MQTT_PASSWORD,
+            CONFIG_MQTT_SERVER, CONFIG_MQTT_PORT);
+    mqtt_event_group = xEventGroupCreate();
+    const esp_mqtt_client_config_t mqtt_cfg = {
+        .event_handle = mqtt_event_handler,
+        .uri = uri,
+    };
+    xEventGroupClearBits(mqtt_event_group, MQTT_CONNECTED_BIT);
+
+    ESP_LOGI(TAG, "connect to mqtt uri %s", uri);
+    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
+    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    ESP_LOGI(TAG, "Note free memory: %d bytes", esp_get_free_heap_size());
 }
 
 static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
@@ -197,6 +216,9 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
                  ip4addr_ntoa(&event->event_info.got_ip.ip_info.ip));
         wifi_retry_count = 0;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+
+        esp_mqtt_client_start(mqtt_client);
+
         break;
     case SYSTEM_EVENT_AP_STACONNECTED:
         ESP_LOGI(TAG, "station:" MACSTR " join, AID=%d",
@@ -217,6 +239,9 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
                                                        WIFI_PROTOCOL_11G |
                                                        WIFI_PROTOCOL_11N);
         }
+        esp_mqtt_client_stop(mqtt_client);
+
+        xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         wifi_retry_count++;
@@ -263,26 +288,6 @@ void connect_to_wifi()
              CONFIG_WIFI_PASSWORD);
 }
 
-static void mqtt_app_start(void)
-{
-    char uri[256];
-    sprintf(uri, "mqtt://%s:%s@%s:%d", CONFIG_MQTT_USER, CONFIG_MQTT_PASSWORD,
-            CONFIG_MQTT_SERVER, CONFIG_MQTT_PORT);
-    mqtt_event_group = xEventGroupCreate();
-    const esp_mqtt_client_config_t mqtt_cfg = {
-        .event_handle = mqtt_event_handler,
-        .uri = uri,
-    };
-
-    ESP_LOGI(TAG, "connect to mqtt uri %s", uri);
-    ESP_LOGI(TAG, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-    mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-
-    xEventGroupClearBits(mqtt_event_group, MQTT_CONNECTED_BIT);
-    esp_mqtt_client_start(mqtt_client);
-    ESP_LOGI(TAG, "Note free memory: %d bytes", esp_get_free_heap_size());
-}
-
 void app_main(void)
 {
     ESP_LOGI(TAG, "starting....\n");
@@ -300,34 +305,33 @@ void app_main(void)
 
     connect_to_wifi();
 
-    ESP_LOGI(TAG, "wait for wifi connect");
-    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true,
-                        portMAX_DELAY);
-
     mqtt_app_start();
-
-    ESP_LOGI(TAG, "wait for mqtt connect");
-    xEventGroupWaitBits(mqtt_event_group, MQTT_CONNECTED_BIT, false, true,
-                        portMAX_DELAY);
-
     homie.mqtt_client = mqtt_client;
-    ESP_LOGI(TAG, "homie init");
-    homie_init(&homie);
 
     ESP_LOGI(TAG, "uart init");
-
     uart_init(&uart);
 
     for (int i = 24 * 60 * 60 / 5; i >= 0; i--)
     {
+        EventBits_t uxBits;
         ESP_LOGI(TAG, "Restarting in %d seconds...\n", i * 5);
 
-        homie.uptime += 30;
+        ESP_LOGI(TAG, "test for mqtt new connect");
+        uxBits = xEventGroupWaitBits(mqtt_event_group, MQTT_CONNECTED_BIT, true,
+                                     true, 1);
+        if ((uxBits & MQTT_CONNECTED_BIT) != 0)
+        {
+            ESP_LOGI(TAG, "homie init");
+            homie_init(&homie);
+            ESP_LOGI(TAG, "homie init done");
+        }
 
+        homie.uptime += 30;
         homie_cycle(&homie);
 
         uart_cycle(&uart); // is waiting 30 sec
     }
+
     ESP_LOGI(TAG, "Restarting now.\n");
     fflush(stdout);
     esp_restart();
