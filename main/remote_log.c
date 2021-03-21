@@ -26,7 +26,7 @@ struct sockaddr_in destAddr;
 int sock = 0;
 struct sockaddr_in destAddrSyslog;
 int sockSyslog = 0;
-const char hostnameSyslog[255] = {0};
+char hostnameSyslog[255] = {0};
 char log_buffer[256] = {0};
 
 #ifdef CONFIG_LOG_COLORS
@@ -57,10 +57,10 @@ void logSyslog(char* log)
         pri += LOG_ERR;
     }
 
-    char* packet = malloc(20+strlen(hostname)+strlen(appname)+strlen(log+last_match)+1);
+    char* packet = malloc(20+strlen(hostnameSyslog)+strlen(appname)+strlen(log+last_match)+1);
 
     // IETF Doc: https://tools.ietf.org/html/rfc5424
-    sprintf(packet, "<%d>1 - %s %s - - - \xEF\xBB\xBF%s", pri, hostname, appname, log+last_match); // BOM UTF-8
+    sprintf(packet, "<%d>1 - %s %s - - - \xEF\xBB\xBF%s", pri, hostnameSyslog, appname, log+last_match); // BOM UTF-8
     sendto(sockSyslog, packet, strlen(packet), 0, (struct sockaddr *)&destAddrSyslog, sizeof(destAddrSyslog));
     free(packet);
 }
