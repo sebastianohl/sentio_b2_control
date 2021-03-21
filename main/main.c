@@ -14,6 +14,7 @@
 #include "ota.h"
 #include "mqtt_client.h"
 #include "sentio.h"
+#include "remote_log.h"
 
 static const char *TAG = "sentio-b2-control";
 
@@ -246,6 +247,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
         wifi_retry_count = 0;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
 
+        start_remote_log("192.168.0.108", 4242, "192.168.0.3", 514, "sentio-b2");
         esp_mqtt_client_start(mqtt_client);
 
         break;
@@ -268,6 +270,7 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
                                                        WIFI_PROTOCOL_11G |
                                                        WIFI_PROTOCOL_11N);
         }
+        stop_remote_log();
         esp_mqtt_client_stop(mqtt_client);
 
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);

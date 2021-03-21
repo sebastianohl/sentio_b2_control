@@ -24,9 +24,9 @@ int sentio_get_status(const char *command, char value[100])
     snprintf(cmd, 99, "GET %s\r\n", command);
     uart_write(&uart, cmd, strlen(cmd));
 
-    uart_cycle(&uart);
     char buf_value[100] = {0};
     size_t buf_len = 99;
+    uart_cycle(&uart);
     uart_get_buffer(&uart, buf_value, &buf_len);
 
     ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
@@ -38,12 +38,15 @@ int sentio_get_status(const char *command, char value[100])
 
         if (strcmp(out_cmd, command) == 0)
         {
+            return 0;
         }
         else if (strcmp(out_cmd, "UNKNOWN") == 0)
         {
             ESP_LOGE(TAG, "unknown command %s", command);
             return -1;
         }
+        ESP_LOGE(TAG, "wrong command %s expected %s", out_cmd, command);
+        return -1;
     }
     else
     {
@@ -59,9 +62,9 @@ int sentio_set_status(const char *command, const char *value)
     snprintf(cmd, 99, "SET %s %s\r\n", command, value);
     uart_write(&uart, cmd, strlen(cmd));
 
-    uart_cycle(&uart);
     char buf_value[100] = {0};
     size_t buf_len = 99;
+    uart_cycle(&uart);
     uart_get_buffer(&uart, buf_value, &buf_len);
 
     ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
@@ -74,12 +77,15 @@ int sentio_set_status(const char *command, const char *value)
 
         if (strcmp(out_cmd, command) == 0)
         {
+            return 0;
         }
         else if (strcmp(out_cmd, "UNKNOWN") == 0)
         {
             ESP_LOGE(TAG, "unknown command %s", command);
             return -1;
         }
+        ESP_LOGE(TAG, "wrong command %s expected %s", out_cmd, command);
+        return -1;
     }
     else
     {
@@ -93,14 +99,15 @@ int sentio_get_value(const char *command, char value[100])
 {
     char cmd[100] = {0};
     snprintf(cmd, 99, "GET %s VAL\r\n", command);
+    ESP_LOGI(TAG, "write value %s", cmd);
     uart_write(&uart, cmd, strlen(cmd));
 
-    uart_cycle(&uart);
     char buf_value[100] = {0};
     size_t buf_len = 99;
+    uart_cycle(&uart);
     uart_get_buffer(&uart, buf_value, &buf_len);
 
-    ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
+    ESP_LOGI(TAG, "buffer value %d %s", buf_len, buf_value);
     char out_cmd[100] = {0};
 
     if (sscanf(buf_value, "%s %s", out_cmd, value) == 2)
@@ -109,12 +116,15 @@ int sentio_get_value(const char *command, char value[100])
 
         if (strcmp(out_cmd, command) == 0)
         {
+            return 0;
         }
         else if (strcmp(out_cmd, "UNKNOWN") == 0)
         {
             ESP_LOGE(TAG, "unknown command %s", command);
             return -1;
         }
+        ESP_LOGE(TAG, "wrong command %s expected %s", out_cmd, command);
+        return -1;
     }
     else
     {
@@ -128,14 +138,16 @@ int sentio_set_value(const char *command, const char *value, const size_t len)
 {
     char cmd[100] = {0};
     snprintf(cmd, 99, "SET %s VAL %.*s\r\n", command, len, value);
+    ESP_LOGI(TAG, "write value %s", cmd);
     uart_write(&uart, cmd, strlen(cmd));
 
     uart_cycle(&uart);
     char buf_value[100] = {0};
     size_t buf_len = 99;
+    uart_cycle(&uart);
     uart_get_buffer(&uart, buf_value, &buf_len);
 
-    ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
+    ESP_LOGI(TAG, "buffer value %d %s", buf_len, buf_value);
 
     char out_cmd[100] = {0};
     char out_val[100] = {0};
@@ -146,12 +158,15 @@ int sentio_set_value(const char *command, const char *value, const size_t len)
 
         if (strcmp(out_cmd, command) == 0)
         {
+            return 0;
         }
         else if (strcmp(out_cmd, "UNKNOWN") == 0)
         {
             ESP_LOGE(TAG, "unknown command %s", command);
             return -1;
         }
+        ESP_LOGE(TAG, "wrong command %s expected %s", out_cmd, command);
+        return -1;
     }
     else
     {
