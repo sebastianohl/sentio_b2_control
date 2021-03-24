@@ -247,7 +247,8 @@ static esp_err_t wifi_event_handler(void *ctx, system_event_t *event)
         wifi_retry_count = 0;
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
 
-        start_remote_log(REMOTELOG_UDP_HOST, REMOTELOG_UDP_PORT, REMOTELOG_SYSLOG_HOST, REMOTELOG_SYSLOG_PORT, REMOTELOG_SYSLOG_APP);
+        start_remote_log(CONFIG_REMOTELOG_UDP_HOST, CONFIG_REMOTELOG_UDP_PORT,
+            CONFIG_REMOTELOG_SYSLOG_HOST, CONFIG_REMOTELOG_SYSLOG_PORT, CONFIG_REMOTELOG_SYSLOG_APP);
         esp_mqtt_client_start(mqtt_client);
 
         break;
