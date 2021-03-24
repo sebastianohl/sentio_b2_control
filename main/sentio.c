@@ -14,7 +14,7 @@ uart_handle_t uart = {.configRx = {.baud_rate = 57600,
                                    .parity = UART_PARITY_DISABLE,
                                    .stop_bits = UART_STOP_BITS_1,
                                    .flow_ctrl = UART_HW_FLOWCTRL_DISABLE},
-                      .wait_ticks = 30000 / portTICK_PERIOD_MS,
+                      .wait_ticks = 1000 / portTICK_PERIOD_MS,
                       .tx_pin = CONFIG_TX_GPIO,
                       .rx_pin = CONFIG_RX_GPIO};
 
@@ -22,11 +22,12 @@ int sentio_get_status(const char *command, char value[100])
 {
     char cmd[100] = {0};
     snprintf(cmd, 99, "GET %s\r\n", command);
+    ESP_LOGD(TAG, "write value %s", cmd);
     uart_write(&uart, cmd, strlen(cmd));
 
     char buf_value[100] = {0};
     size_t buf_len = 99;
-    uart_cycle(&uart);
+    int i = 0; while(i++<5) { if (uart_cycle(&uart) != UART_FRAME_ERR) break; }
     uart_get_buffer(&uart, buf_value, &buf_len);
 
     ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
@@ -50,7 +51,7 @@ int sentio_get_status(const char *command, char value[100])
     }
     else
     {
-        ESP_LOGE(TAG, "sscanf failed: %s", buf_value);
+        ESP_LOGE(TAG, "sscanf failed1: %s", buf_value);
         return -1;
     }
     return 0;
@@ -60,11 +61,12 @@ int sentio_set_status(const char *command, const char *value)
 {
     char cmd[100] = {0};
     snprintf(cmd, 99, "SET %s %s\r\n", command, value);
+    ESP_LOGD(TAG, "write value %s", cmd);
     uart_write(&uart, cmd, strlen(cmd));
 
     char buf_value[100] = {0};
     size_t buf_len = 99;
-    uart_cycle(&uart);
+    int i = 0; while(i++<5) { if (uart_cycle(&uart) != UART_FRAME_ERR) break; }
     uart_get_buffer(&uart, buf_value, &buf_len);
 
     ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
@@ -89,7 +91,7 @@ int sentio_set_status(const char *command, const char *value)
     }
     else
     {
-        ESP_LOGE(TAG, "sscanf failed: %s", buf_value);
+        ESP_LOGE(TAG, "sscanf failed2: %s", buf_value);
         return -1;
     }
     return 0;
@@ -99,15 +101,15 @@ int sentio_get_value(const char *command, char value[100])
 {
     char cmd[100] = {0};
     snprintf(cmd, 99, "GET %s VAL\r\n", command);
-    ESP_LOGI(TAG, "write value %s", cmd);
+    ESP_LOGD(TAG, "write value %s", cmd);
     uart_write(&uart, cmd, strlen(cmd));
 
     char buf_value[100] = {0};
     size_t buf_len = 99;
-    uart_cycle(&uart);
+    int i = 0; while(i++<5) { if (uart_cycle(&uart) != UART_FRAME_ERR) break; }
     uart_get_buffer(&uart, buf_value, &buf_len);
 
-    ESP_LOGI(TAG, "buffer value %d %s", buf_len, buf_value);
+    ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
     char out_cmd[100] = {0};
 
     if (sscanf(buf_value, "%s %s", out_cmd, value) == 2)
@@ -128,7 +130,7 @@ int sentio_get_value(const char *command, char value[100])
     }
     else
     {
-        ESP_LOGE(TAG, "sscanf failed: %s", buf_value);
+        ESP_LOGE(TAG, "sscanf failed3: %s", buf_value);
         return -1;
     }
     return 0;
@@ -138,16 +140,15 @@ int sentio_set_value(const char *command, const char *value, const size_t len)
 {
     char cmd[100] = {0};
     snprintf(cmd, 99, "SET %s VAL %.*s\r\n", command, len, value);
-    ESP_LOGI(TAG, "write value %s", cmd);
+    ESP_LOGD(TAG, "write value %s", cmd);
     uart_write(&uart, cmd, strlen(cmd));
 
-    uart_cycle(&uart);
     char buf_value[100] = {0};
     size_t buf_len = 99;
-    uart_cycle(&uart);
+    int i = 0; while(i++<5) { if (uart_cycle(&uart) != UART_FRAME_ERR) break; }
     uart_get_buffer(&uart, buf_value, &buf_len);
 
-    ESP_LOGI(TAG, "buffer value %d %s", buf_len, buf_value);
+    ESP_LOGD(TAG, "buffer value %d %s", buf_len, buf_value);
 
     char out_cmd[100] = {0};
     char out_val[100] = {0};
@@ -170,7 +171,7 @@ int sentio_set_value(const char *command, const char *value, const size_t len)
     }
     else
     {
-        ESP_LOGE(TAG, "sscanf failed: %s", buf_value);
+        ESP_LOGE(TAG, "sscanf failed4: %s", buf_value);
         return -1;
     }
 

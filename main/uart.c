@@ -16,7 +16,7 @@
 
 static const char *TAG = "sentio-b2-control";
 
-void uart_cycle(uart_handle_t *handle)
+uart_event_type_t uart_cycle(uart_handle_t *handle)
 {
     uart_event_t event;
 
@@ -26,7 +26,7 @@ void uart_cycle(uart_handle_t *handle)
     // Waiting for UART event.
     if (xQueueReceive(handle->queue, (void *)&event, handle->wait_ticks))
     {
-        ESP_LOGI(TAG, "event %d", event.type);
+        ESP_LOGD(TAG, "event %d", event.type);
         switch (event.type)
         {
         // Event of UART receving data
@@ -64,17 +64,21 @@ void uart_cycle(uart_handle_t *handle)
             break;
 
         case UART_PARITY_ERR:
+            ESP_LOGE(TAG, "uart parity error");
             break;
 
             // Event of UART frame error
         case UART_FRAME_ERR:
+            ESP_LOGE(TAG, "uart frame error");
             break;
 
             // Others
         default:
             break;
         }
+        return event.type;
     }
+    return UART_EVENT_MAX;
 }
 
 void uart_write(uart_handle_t *handle, const char *buffer, size_t length)

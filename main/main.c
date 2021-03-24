@@ -179,10 +179,10 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        ESP_LOGD(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+        ESP_LOGD(TAG, "MQTT_EVENT_DATA, topic %*.s", event->topic_len, event->topic);
         printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
         printf("DATA='%.*s'\r\n", event->data_len, event->data);
         printf("ID=%d, total_len=%d, data_len=%d, current_data_offset=%d\n",
@@ -193,10 +193,10 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 
         break;
     case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+        ESP_LOGE(TAG, "MQTT_EVENT_ERROR");
         break;
     default:
-        ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+        ESP_LOGD(TAG, "Other event id:%d", event->event_id);
         break;
     }
     return ESP_OK;
@@ -355,6 +355,7 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "starting....\n");
 
+    esp_log_level_set(TAG, ESP_LOG_VERBOSE);
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES)
@@ -395,6 +396,7 @@ void app_main(void)
             ESP_LOGI(TAG, "homie init");
             homie_init(&homie);
             ESP_LOGI(TAG, "homie init done");
+            vTaskDelay((5*1000) / portTICK_PERIOD_MS);
         }
         
         uxBits = xEventGroupWaitBits(mqtt_event_group, MQTT_CONNECTED_BIT, false,
@@ -405,7 +407,8 @@ void app_main(void)
             homie_cycle(&homie);
         }
 
-        uart_cycle(&uart); // is waiting 30 sec
+        vTaskDelay(((30-1)*1000) / portTICK_PERIOD_MS);
+        uart_cycle(&uart); // is waiting 1 sec, read all input
     }
 
     ESP_LOGI(TAG, "Restarting now.\n");
